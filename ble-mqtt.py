@@ -1,13 +1,53 @@
 #!/usr/bin/env python
 
 from bluepy.btle import Scanner, DefaultDelegate # pylint: disable=import-error
-from time import strftime
+from time import strftime, sleep
+import paho.mqtt.client as mqtt
+
 import struct
 import json
+import copy
+
+global sensors
+global portalId
+
+clientid = "thermogw3"
+version = "v1.0 ALPHA"
+portalId = ""
+
+registration = {
+    "clientId": clientid,
+    "connected": 1,
+    "version": version,
+    "services": {}
+    }
+
+unregister = copy.deepcopy(registration)
+unregister["connected"] = 0
+
+sensors = {
+    "t1":
+    {
+        "devaddr": "19:c4:00:00:20:c5",
+        "CustomName": "Innenraum",
+        "deviceId":""
+    },
+    "t2":
+    {
+        "devaddr": "19:c4:00:00:20:c8",
+        "CustomName": "Kuehlschrank",
+        "deviceId":""
+    },
+    "t3":
+    {
+        "devaddr": "19:c4:00:00:20:c9",
+        "CustomName": "Doppelboden",
+        "deviceId":""
+    }
+}
 
 
-#Enter the MAC address of the sensors
-SENSORS = {"19:c4:00:00:20:c5": "Innenraum"}
+
 
 class DecodeErrorException(Exception):
      def __init__(self, value):
@@ -40,74 +80,79 @@ def convert_uptime(t):
     return "{} Days {} Hours {} Minutes {} Seconds".format(days,hours,minutes,seconds)
 
 
-def on_message(client, userdata, msg):  # The callback for when a PUBLISH message is received from the server.
+
+def on_message(client, userdata, msg):
     global portalId
-    global deviceTempInstance
+    global sensors
+    print(msg.topic+" "+str(msg.payload))
 
-    x = json.loads(msg.payload)
-    portalId = x["portalId"]
-    deviceTempInstance = x["deviceInstance"]["t1"]
+    dbus_msg = json.loads(msg.payload)
+    portalId = dbus_msg.get("portalId")
+    deviceIds = dbus_msg.get("deviceInstance")
+    for deviceId in deviceIds:
+        sensors.get(deviceId)["deviceId"]=deviceIds[deviceId]
 
-print ("Enable MQTT")
-clientid = "thermogw"
-import paho.mqtt.client as mqtt
-mqttBroker ="127.0.0.1"
+    for sensor in sensors:
+        #print ("W/{0}/temperature/{1}/CustomName".format(portalId,sensors[sensor]["deviceId"]))
+        client.publish("W/{0}/temperature/{1}/CustomName".format(portalId,sensors[sensor]["deviceId"]),json.dumps({"value":sensors[sensor]["CustomName"]}))
+
+
+def on_connect(client, userdata, flags, rc):
+
+    global registration
+    for sensor in sensors:
+        registration["services"][sensor]="temperature"
+    print("Connected with result code "+str(rc))
+    # Subscribing in on_connect() means that if we lose the connection and
+    # reconnect then subscriptions will be renewed.
+    client.subscribe("device/{}/DBus".format(clientid))
+    client.publish("device/{}/Status".format(clientid), json.dumps(registration))
+
 mqclient = mqtt.Client(clientid)
 mqclient.on_message = on_message
-mqclient.connect(mqttBroker)
+mqclient.on_connect = on_connect
+mqclient.will_set("device/{}/Status".format(clientid), json.dumps(unregister))
+print("Enable mqtt...")
+mqclient.connect("127.0.0.1", 1883, 60)
 mqclient.loop_start()
-
-version = "v1.0 ALPHA"
-topic = "device/{0}/DBus".format(clientid)
-status = "device/{0}/Status".format(clientid)
-payload = json.dumps({ "clientId": clientid, "connected": 1, "version": version, "services":{"t1": "temperature"} })
-try:
-    mqclient.subscribe(topic)
-    mqclient.publish(status,payload)
-except Exception as e:
-    print ("MQ Init failed: {}".format(e))
-
 
 print("Establishing scanner...")
 scanner = Scanner().withDelegate(ScanDelegate())
 
-try:
-    while True:
-        print ("Initiating scan...")
-        devices = scanner.scan(5.0)
-
+while True:
+    try:
+        devices = scanner.scan(2.0)
         for dev in devices:
-            if dev.addr in SENSORS:
-                CurrentDevAddr = dev.addr
-                CurrentDevLoc = SENSORS[dev.addr]
-                manufacturer_hex = next(value for _, desc, value in dev.getScanData() if desc == 'Manufacturer')
-                manufacturer_bytes = bytes.fromhex(manufacturer_hex)
+            for sensor in sensors:
+                if dev.addr in sensors[sensor]["devaddr"]:
+                    CurrentDevInstance = sensors[sensor]["deviceId"]
+                    CurrentDevLoc = sensors[sensor]["CustomName"]
+                    manufacturer_hex = next(value for _, desc, value in dev.getScanData() if desc == 'Manufacturer')
+                    manufacturer_bytes = bytes.fromhex(manufacturer_hex)
 
-                if len(manufacturer_bytes) == 20:
-                    e6, e5, e4, e3, e2, e1, voltage, temperature_raw, humidity_raw, uptime_seconds = struct.unpack('xxxxBBBBBBHHHI', manufacturer_bytes)
+                    if len(manufacturer_bytes) == 20:
+                        e6, e5, e4, e3, e2, e1, voltage, temperature_raw, humidity_raw, uptime_seconds = struct.unpack('xxxxBBBBBBHHHI', manufacturer_bytes)
 
-                    temperature_C = temperature_raw / 16.
-                    temperature_F = temperature_C * 9. / 5. + 32.
-                    humidity_pct = humidity_raw / 16.
+                        temperature_C = temperature_raw / 16.
+                        temperature_F = temperature_C * 9. / 5. + 32.
+                        humidity_pct = humidity_raw / 16.
 
-                    voltage = voltage / 1000
+                        voltage = voltage / 1000
 
-                    uptime = convert_uptime(uptime_seconds)
+                        uptime = convert_uptime(uptime_seconds)
 
-                    uptime_days = uptime_seconds / 86400
+                        uptime_days = uptime_seconds / 86400
 
-                    print ("Device: {} Temperature: {} degC Humidity: {}% Uptime: {} sec Voltage: {}V".format(CurrentDevLoc,temperature_C,humidity_pct,uptime,voltage))
+                        print ("Device: {} Temperature: {} degC Humidity: {}% Uptime: {} sec Voltage: {}V".format(CurrentDevLoc,temperature_C,humidity_pct,uptime,voltage))
 
-                    topic = "W/{0}/temperature/{1}/Temperature".format(portalId,deviceTempInstance)
-                    payload = json.dumps({"value":temperature_C})
-                    mqclient.publish(topic,payload)
-                    topic = "W/{0}/temperature/{1}/Humidity".format(portalId,deviceTempInstance)
-                    payload = json.dumps({"value":humidity_pct})
-                    mqclient.publish(topic,payload)
-
-                else:
-                    print ("Ignoring invalid data length for {}: {}".format(CurrentDevLoc,len(manufacturer_bytes)))
-
-except DecodeErrorException:
-    print("Decode Exception")
-    pass
+                        topic = "W/{0}/temperature/{1}/Temperature".format(portalId,CurrentDevInstance)
+                        payload = json.dumps({"value":temperature_C})
+                        mqclient.publish(topic,payload)
+                        topic = "W/{0}/temperature/{1}/Humidity".format(portalId,CurrentDevInstance)
+                        payload = json.dumps({"value":humidity_pct})
+                        mqclient.publish(topic,payload)
+        sleep(5)
+    except KeyboardInterrupt:
+       print("Program terminated manually!")
+       mqclient.loop_stop()
+       raise SystemExit
