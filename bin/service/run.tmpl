@@ -1,0 +1,5 @@
+#!/bin/sh
+echo "*** starting ble-mqtt ***"
+BASE=${BASE}
+exec 2>&1
+HOME=$BASE exec $BASE/ble-mqtt.py
