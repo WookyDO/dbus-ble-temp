@@ -65,10 +65,10 @@ class ScanDelegate(DefaultDelegate):
 
     def handleDiscovery(self, dev, isNewDev, isNewData):
         if isNewDev:
-            logging.info ("Discovered device", dev.addr)
+            logging.debug ("Discovered device {}".format(dev.addr))
             pass
         elif isNewData:
-            logging.info ("Received new data from", dev.addr)
+            logging.debug ("Received new data from  {}".format(dev.addr))
             pass
 
 
@@ -85,7 +85,7 @@ def convert_uptime(t):
 
 
 def on_disconnect(client, userdata, rc):
-    logging.info("disconnecting reason  "  +str(rc))
+    logging.info("disconnecting reason {}".format(rc))
     client.connected_flag=False
     client.disconnect_flag=True
 
@@ -101,7 +101,7 @@ def on_message(client, userdata, msg):
         sensors.get(deviceId)["deviceId"]=deviceIds[deviceId]
 
     for sensor in sensors:
-        #logging.debug ("W/{0}/temperature/{1}/CustomName".format(portalId,sensors[sensor]["deviceId"]))
+        logging.debug ("W/{0}/temperature/{1}/CustomName".format(portalId,sensors[sensor]["deviceId"]))
         client.publish("W/{0}/temperature/{1}/CustomName".format(portalId,sensors[sensor]["deviceId"]),json.dumps({"value":sensors[sensor]["CustomName"]}))
 
 
@@ -109,11 +109,11 @@ def on_connect(client, userdata, flags, rc):
 
     global registration
     if rc==0:
-        logging.info("on_connect_flag:",client.connected_flag)
+        logging.debug("on_connect_flag: {}".format(client.connected_flag))
         client.connected_flag=True
         logging.info ("MQTT connected, Status: {0}".format(rc))
     else:
-        logging.info ("Bad connection Returned code=",rc)
+        logging.info ("Bad connection Returned code={}".format(rc))
     for sensor in sensors:
         registration["services"][sensor]="temperature"
     # Subscribing in on_connect() means that if we lose the connection and
@@ -185,7 +185,7 @@ def main():
         except KeyboardInterrupt:
             logging.info("Program terminated manually!")
             mqclient.loop_stop()
-            pass
+            SystemExit()
 
 if __name__ == '__main__':
     # Argument parsing
