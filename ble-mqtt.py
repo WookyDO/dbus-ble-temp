@@ -127,9 +127,9 @@ def main():
     parser.add_argument('-d', '--debug', help='set logging level to debug', action='store_true')
     args = parser.parse_args()
 
-    logging.info("-------- ble-mqtt, v{} is starting up --------".format(version))
     logger = setup_logging(args.debug)
-
+    logging.info("-------- ble-mqtt, v{} is starting up --------".format(version))
+    
     mqclient = mqtt.Client(clientid)
     mqclient.connected_flag = False
     mqclient.on_message = on_message
