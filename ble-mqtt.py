@@ -123,13 +123,6 @@ def on_connect(client, userdata, flags, rc):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Publishes values from ble-devices to dbus-mqtt-devices')
-    parser.add_argument('-d', '--debug', help='set logging level to debug', action='store_true')
-    args = parser.parse_args()
-
-    logger = setup_logging(args.debug)
-    logging.info("-------- ble-mqtt, v{} is starting up --------".format(version))
-    
     mqclient = mqtt.Client(clientid)
     mqclient.connected_flag = False
     mqclient.on_message = on_message
