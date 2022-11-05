@@ -14,7 +14,7 @@ jobs:
       uses: thedoctor0/zip-release@main
       with:
         type: 'zip'
-        filename: '${{github.ref_name}}.zip'
+        filename: 'release.zip'
     - name: Upload Release
       uses: ncipollo/release-action@v1
       with:
