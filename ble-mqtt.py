@@ -39,13 +39,25 @@ sensors = {
     "t1":
     {
         "devaddr": "19:c4:00:00:20:c5",
-        "CustomName": "Room2",
+        "CustomName": "Room1",
         "deviceId":""
     },
     "t2":
     {
-        "devaddr": "19:c4:00:00:20:c8",
-        "CustomName": "Fridge2",
+        "devaddr": "00:00:00:00:00:de",
+        "CustomName": "Room2",
+        "deviceId":""
+    },
+    "t3":
+    {
+        "devaddr": "fa:ac:00:00:17:21",
+        "CustomName": "Room3",
+        "deviceId":""
+    },
+    "t4":
+    {
+        "devaddr": "dc:12:00:00:12:62",
+        "CustomName": "Room4",
         "deviceId":""
     }
 }
