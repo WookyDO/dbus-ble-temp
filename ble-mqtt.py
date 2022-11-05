@@ -8,10 +8,11 @@ import argparse
 import struct
 import json
 import copy
+import sys
+import os
 
 # Victron packages
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), 'ext', 'velib_python'))
-
 from logger import setup_logging
 
 
