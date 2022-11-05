@@ -3,15 +3,17 @@
 from bluepy.btle import Scanner, DefaultDelegate # pylint: disable=import-error
 from time import strftime, sleep
 import paho.mqtt.client as mqtt
+import logging
 
 import struct
 import json
 import copy
 
+
 global sensors
 global portalId
 
-clientid = "thermogw3"
+clientid = "thermo_gw4"
 version = "v1.0 ALPHA"
 portalId = ""
 
@@ -29,19 +31,13 @@ sensors = {
     "t1":
     {
         "devaddr": "19:c4:00:00:20:c5",
-        "CustomName": "Innenraum",
+        "CustomName": "Room2",
         "deviceId":""
     },
     "t2":
     {
         "devaddr": "19:c4:00:00:20:c8",
-        "CustomName": "Kuehlschrank",
-        "deviceId":""
-    },
-    "t3":
-    {
-        "devaddr": "19:c4:00:00:20:c9",
-        "CustomName": "Doppelboden",
+        "CustomName": "Fridge2",
         "deviceId":""
     }
 }
@@ -80,11 +76,15 @@ def convert_uptime(t):
     return "{} Days {} Hours {} Minutes {} Seconds".format(days,hours,minutes,seconds)
 
 
+def on_disconnect(client, userdata, rc):
+    print("disconnecting reason  "  +str(rc))
+    client.connected_flag=False
+    client.disconnect_flag=True
 
 def on_message(client, userdata, msg):
     global portalId
     global sensors
-    print(msg.topic+" "+str(msg.payload))
+    print("New Message, Topic: {0}, Content: {1}".format(msg.topic,msg.payload))
 
     dbus_msg = json.loads(msg.payload)
     portalId = dbus_msg.get("portalId")
@@ -100,28 +100,43 @@ def on_message(client, userdata, msg):
 def on_connect(client, userdata, flags, rc):
 
     global registration
+    if rc==0:
+        print("on_connect_flag:",client.connected_flag)
+        client.connected_flag=True
+        print ("MQTT connected, Status: {0}".format(rc))
+    else:
+        print ("Bad connection Returned code=",rc)
     for sensor in sensors:
         registration["services"][sensor]="temperature"
-    print("Connected with result code "+str(rc))
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
     client.subscribe("device/{}/DBus".format(clientid))
     client.publish("device/{}/Status".format(clientid), json.dumps(registration))
 
+
+
 mqclient = mqtt.Client(clientid)
+mqclient.connected_flag = False
 mqclient.on_message = on_message
 mqclient.on_connect = on_connect
+mqclient.on_disconnect = on_disconnect
+
 mqclient.will_set("device/{}/Status".format(clientid), json.dumps(unregister))
-print("Enable mqtt...")
+logging.info("Enable mqtt...")
 mqclient.connect("127.0.0.1", 1883, 60)
 mqclient.loop_start()
 
-print("Establishing scanner...")
+logging.info("Establishing scanner...")
 scanner = Scanner().withDelegate(ScanDelegate())
 
+while not mqclient.connected_flag: #wait in loop
+    logging.info("In wait loop")
+    sleep(1)
+logging.info("in Main Loop")
 while True:
     try:
-        devices = scanner.scan(2.0)
+        logging.info("Scanning 2.0sec for Devices")
+        devices = scanner.scan(2.0, passive=True)
         for dev in devices:
             for sensor in sensors:
                 if dev.addr in sensors[sensor]["devaddr"]:
@@ -143,7 +158,7 @@ while True:
 
                         uptime_days = uptime_seconds / 86400
 
-                        print ("Device: {} Temperature: {} degC Humidity: {}% Uptime: {} sec Voltage: {}V".format(CurrentDevLoc,temperature_C,humidity_pct,uptime,voltage))
+                        logging.info ("Device: {} Temperature: {} degC Humidity: {}% Uptime: {} sec Voltage: {}V".format(CurrentDevLoc,temperature_C,humidity_pct,uptime,voltage))
 
                         topic = "W/{0}/temperature/{1}/Temperature".format(portalId,CurrentDevInstance)
                         payload = json.dumps({"value":temperature_C})
@@ -151,8 +166,8 @@ while True:
                         topic = "W/{0}/temperature/{1}/Humidity".format(portalId,CurrentDevInstance)
                         payload = json.dumps({"value":humidity_pct})
                         mqclient.publish(topic,payload)
-        sleep(5)
+        sleep(30)
     except KeyboardInterrupt:
-       print("Program terminated manually!")
+       logging.info("Program terminated manually!")
        mqclient.loop_stop()
        raise SystemExit

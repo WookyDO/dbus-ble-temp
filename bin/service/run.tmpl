@@ -1,4 +1,6 @@
 #!/bin/sh
+echo "*** waiting for dbus-mqtt-devices ***"
+svwaitup 30 /service/dbus-mqtt-devices
 echo "*** starting ble-mqtt ***"
 BASE=${BASE}
 exec 2>&1
