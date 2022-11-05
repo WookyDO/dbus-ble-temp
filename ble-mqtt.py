@@ -23,7 +23,7 @@ global portalId
 clientid = "thermo_gw4"
 version = "v1.0 ALPHA"
 softwareVersion = "v0.2.0"
-portalId = ""
+portalId = "notSet"
 
 registration = {
     "clientId": clientid,
@@ -129,7 +129,7 @@ def main():
 
     logging.info("-------- ble-mqtt, v{} is starting up --------".format(version))
     logger = setup_logging(args.debug)
-    
+
     mqclient = mqtt.Client(clientid)
     mqclient.connected_flag = False
     mqclient.on_message = on_message
@@ -145,9 +145,16 @@ def main():
     scanner = Scanner().withDelegate(ScanDelegate())
 
     while not mqclient.connected_flag: #wait in loop
-        logging.info("In wait loop")
+        logging.info("wait for mqtt...")
         sleep(1)
-    logging.info("in Main Loop")
+    ti=30
+    while portalId=="notSet":
+        ti-=1
+        if ti==0:
+            logging.error("no portalId assigned, dbus-mqtt-devices working ?")
+            quit()
+        logging.info("wait for portalId ({}sec)...".format(ti))
+        sleep(1)
     while True:
         try:
             logging.info("Scanning 2.0sec for Devices")
