@@ -13,10 +13,9 @@ if [ "$piperr" -ne 0 ]; then
 fi
 
 echo "Install gcc"
-opkg update && opkg install gcc
+opkg update && opkg install gcc make pkgconfig binutils
 
-echo "Install make"
-opkg update && opkg install make
+
 echo "Install bluez5-dev"
 opkg update && opkg install bluez5-dev
 
