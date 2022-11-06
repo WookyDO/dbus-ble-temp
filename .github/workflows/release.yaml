@@ -14,4 +14,4 @@ jobs:
       uses: thedoctor0/zip-release@main
       with:
         type: 'zip'
-        filename: '${{github.ref_name}}.zip'
+        filename: 'ble-mqtt-${{github.ref_name}}.zip'
