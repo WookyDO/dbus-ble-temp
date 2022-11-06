@@ -12,6 +12,9 @@ if [ "$piperr" -ne 0 ]; then
     opkg update && opkg install python3-pip
 fi
 
+echo "Install gcc"
+opkg update && opkg install gcc
+
 echo "Install make"
 opkg update && opkg install make
 echo "Install bluez5-dev"

@@ -1,6 +1,13 @@
 # ble-mqtt
 
-*** NOT TESTED ON CCGX ***
+*** Important to know!!! ***
+NOT TESTED ON CCGX
+
+This tool needs additional libraries (gcc, make, bluez5-dev) which may use a big amount of storage, it may be necessary to extend your partition before usage: 
+```
+/opt/victronenergy/swupdate-scripts/resize2fs.sh
+```
+
 
 This Venus GX Driver works in concert with the [dbus-mqtt-devices](https://github.com/freakent/dbus-mqtt-devices).
 
