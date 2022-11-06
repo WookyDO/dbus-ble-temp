@@ -22,7 +22,7 @@ global portalId
 
 clientid = "thermo_gw4"
 version = "v1.0 ALPHA"
-softwareVersion = "v0.2.0"
+softwareVersion = "v0.3.0"
 portalId = "notSet"
 raspberryDeviceId = "rpi"
 
@@ -172,7 +172,7 @@ def main():
             logging.info("Scanning 2.0sec for Devices")
             devices = scanner.scan(2.0, passive=True)
 
-if raspberryDeviceId in sensors:
+            if raspberryDeviceId in sensors:
                 with open("/sys/class/thermal/thermal_zone0/temp") as f:
                     temperature_C = int(f.readline())/1000
                 CurrentDevInstance = sensors[raspberryDeviceId]["deviceId"]
