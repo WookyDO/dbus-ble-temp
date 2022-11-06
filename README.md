@@ -11,6 +11,7 @@ It pulls data from ThermoBeacon and publishes it to MQTT together with necessary
 2. [Configuration](#Configuration)
 3. [Troubleshooting](#Troubleshooting)
 4. [To Do](#To-Do)
+5. [Thanks](#thanks)
 
 
 ## Install and Setup 
@@ -84,3 +85,6 @@ I get email alerts from Github which I don't seem to get from the Victron commun
 ## To Do
 - autolearning
 - external config file
+
+## Thanks
+Based on the thermobeacon decoder from https://github.com/rnlgreen/thermobeacon
