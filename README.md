@@ -27,7 +27,7 @@ To get the driver up and running, download the latest release from github and th
 ```
 $ mkdir -p /data/drivers/ble-mqtt
 $ cd /data/drivers/ble-mqtt
-$ wget -O ble-mqtt.zip https://github.com/wolfganghuse/ble-mqtt/releases/download/v0.3.0/ble-mqtt.zip
+$ wget -O ble-mqtt.zip https://github.com/wolfganghuse/ble-mqtt/releases/download/v0.3.1/ble-mqtt.zip
 $ unzip ble-mqtt.zip
 ```
 
