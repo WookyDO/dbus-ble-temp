@@ -90,6 +90,7 @@ I get email alerts from Github which I don't seem to get from the Victron commun
 
 
 ## To Do
+- add check for extended storage partition
 - autolearning
 - external config file
 
