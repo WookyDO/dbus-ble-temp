@@ -24,6 +24,7 @@ clientid = "thermo_gw4"
 version = "v1.0 ALPHA"
 softwareVersion = "v0.2.0"
 portalId = "notSet"
+raspberryDeviceId = "rpi"
 
 registration = {
     "clientId": clientid,
@@ -58,6 +59,12 @@ sensors = {
     {
         "devaddr": "dc:12:00:00:12:62",
         "CustomName": "Room4",
+        "deviceId":""
+    },
+    "rpi":
+    {
+        "devaddr": "rpi",
+        "CustomName": "Raspberry",
         "deviceId":""
     }
 }
@@ -164,6 +171,18 @@ def main():
         try:
             logging.info("Scanning 2.0sec for Devices")
             devices = scanner.scan(2.0, passive=True)
+
+if raspberryDeviceId in sensors:
+                with open("/sys/class/thermal/thermal_zone0/temp") as f:
+                    temperature_C = int(f.readline())/1000
+                CurrentDevInstance = sensors[raspberryDeviceId]["deviceId"]
+                CurrentDevLoc = sensors[raspberryDeviceId]["CustomName"]
+                logging.info ("Device: {} Temperature: {} degC".format(CurrentDevLoc,temperature_C))
+
+            topic = "W/{0}/temperature/{1}/Temperature".format(portalId,CurrentDevInstance)
+            payload = json.dumps({"value":temperature_C})
+            mqclient.publish(topic,payload)
+
             for dev in devices:
                 for sensor in sensors:
                     if dev.addr in sensors[sensor]["devaddr"]:
@@ -176,7 +195,6 @@ def main():
                             e6, e5, e4, e3, e2, e1, voltage, temperature_raw, humidity_raw, uptime_seconds = struct.unpack('xxxxBBBBBBHHHI', manufacturer_bytes)
 
                             temperature_C = temperature_raw / 16.
-                            temperature_F = temperature_C * 9. / 5. + 32.
                             humidity_pct = humidity_raw / 16.
 
                             voltage = voltage / 1000
