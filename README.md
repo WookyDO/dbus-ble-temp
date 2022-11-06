@@ -39,7 +39,7 @@ $ ./bin/setup.sh
 4. Check the contents of /data/rc.local to ensure ble-mqtt automatically starts on reboot
 ```
 $ cat /data/rc.local
-ln -s /data/drivers/ble-mqtt-0.3.0/bin/service /service/ble-mqtt
+ln -s /data/drivers/ble-mqtt/bin/service /service/ble-mqtt
 ```
 
 5. Reboot (recommended)
