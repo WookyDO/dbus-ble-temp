@@ -26,19 +26,19 @@ To get the driver up and running, download the latest release from github and th
 ```
 $ mkdir -p /data/drivers
 $ cd /data/drivers
-$ wget -O ble-mqtt.zip https://github.com/wolfganghuse/ble-mqtt/archive/refs/tags/v0.2.2.zip
+$ wget -O ble-mqtt.zip https://github.com/wolfganghuse/ble-mqtt/releases/download/v0.3.0/ble-mqtt.zip
 $ unzip ble-mqtt.zip
 ```
 
 3. Run the set up script
 ```
-$ ./ble-mqtt-0.2.2/bin/setup.sh
+$ ./ble-mqtt-0.3.0/bin/setup.sh
 ```
 
 4. Check the contents of /data/rc.local to ensure ble-mqtt automatically starts on reboot
 ```
 $ cat /data/rc.local
-ln -s /data/drivers/ble-mqtt-0.2.2/bin/service /service/ble-mqtt
+ln -s /data/drivers/ble-mqtt-0.3.0/bin/service /service/ble-mqtt
 ```
 
 5. Reboot (recommended)
@@ -82,6 +82,5 @@ I get email alerts from Github which I don't seem to get from the Victron commun
 
 
 ## To Do
-- wait for dbus-mqtt-devices ready
 - autolearning
 - external config file
