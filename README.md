@@ -25,15 +25,15 @@ To get the driver up and running, download the latest release from github and th
 2. Download the latest zip from github and extract contents
 
 ```
-$ mkdir -p /data/drivers
-$ cd /data/drivers
+$ mkdir -p /data/drivers/ble-mqtt
+$ cd /data/drivers/ble-mqtt
 $ wget -O ble-mqtt.zip https://github.com/wolfganghuse/ble-mqtt/releases/download/v0.3.0/ble-mqtt.zip
 $ unzip ble-mqtt.zip
 ```
 
 3. Run the set up script
 ```
-$ ./ble-mqtt-0.3.0/bin/setup.sh
+$ ./bin/setup.sh
 ```
 
 4. Check the contents of /data/rc.local to ensure ble-mqtt automatically starts on reboot
