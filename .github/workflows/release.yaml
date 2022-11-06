@@ -15,3 +15,8 @@ jobs:
       with:
         type: 'zip'
         filename: 'ble-mqtt-${{github.ref_name}}.zip'
+    - name: Upload Release
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "ble-mqtt-${{github.ref_name}}.zip"
+        token: ${{ secrets.GITHUB_TOKEN }}
