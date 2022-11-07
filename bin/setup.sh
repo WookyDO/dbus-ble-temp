@@ -15,6 +15,8 @@ fi
 echo "Install gcc"
 opkg update && opkg install gcc make pkgconfig binutils
 
+echo "Create cc symlink"
+ln -s /usr/bin/arm-ve-linux-gnueabi-gcc /usr/bin/cc
 
 echo "Install bluez5-dev"
 opkg update && opkg install bluez5-dev
