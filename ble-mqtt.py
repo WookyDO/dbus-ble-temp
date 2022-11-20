@@ -195,6 +195,10 @@ def main():
                             e6, e5, e4, e3, e2, e1, voltage, temperature_raw, humidity_raw, uptime_seconds = struct.unpack('xxxxBBBBBBHHHI', manufacturer_bytes)
 
                             temperature_C = temperature_raw / 16.
+  
+                            if temperature_C > 4000:
+                                temperature_C = temperature_C - 4096
+
                             humidity_pct = humidity_raw / 16.
 
                             voltage = voltage / 1000
