@@ -1,9 +1,9 @@
 #!/bin/sh
-#BASE=/data/drivers/ble-mqtt
+#BASE=/data/drivers/dbus-ble-temp
 BASE=$(dirname $(dirname $(realpath "$0")))
 
-echo "Uninstall ble-mqtt from $BASE"
+echo "Uninstall dbus-ble-temp from $BASE"
 
-rm -f /service/ble-mqtt
+rm -f /service/dbus-ble-temp
 rm -r $BASE
-echo "Uninstall ble-mqtt complete"
+echo "Uninstall dbus-ble-temp complete"
