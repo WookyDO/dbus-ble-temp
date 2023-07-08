@@ -1,8 +1,8 @@
 #!/bin/sh
-#BASE=/data/drivers/ble-mqtt
+#BASE=/data/drivers/dbus-ble-temp
 BASE=$(dirname $(dirname $(realpath "$0")))
 
-echo "Setup ble-mqtt in $BASE started"
+echo "Setup dbus-ble-temp in $BASE started"
 cd $BASE
 
 echo "Ensure Python's Pip is installed"
@@ -25,16 +25,16 @@ echo "Pip install module dependencies"
 python -m pip install -r requirements.txt
 
 echo "Set up device service to autorun on restart"
-chmod +x $BASE/ble-mqtt.py
+chmod +x $BASE/dbus-ble-temp.py
 # Use awk to inject correct BASE path into the run script
 awk -v base=$BASE '{gsub(/\$\{BASE\}/,base);}1' $BASE/bin/service/run.tmpl >$BASE/bin/service/run
 chmod -R a+rwx $BASE/bin/service
-rm -f /service/ble-mqtt
-ln -s $BASE/bin/service /service/ble-mqtt
+rm -f /service/dbus-ble-temp
+ln -s $BASE/bin/service /service/dbus-ble-temp
 
-CMD="ln -s $BASE/bin/service /service/ble-mqtt"
+CMD="ln -s $BASE/bin/service /service/dbus-ble-temp"
 if ! grep -q "$CMD" /data/rc.local; then
     echo "$CMD" >> /data/rc.local
 fi
 chmod +x /data/rc.local
-echo "Setup ble-mqtt complete"
+echo "Setup dbus-ble-temp complete"
