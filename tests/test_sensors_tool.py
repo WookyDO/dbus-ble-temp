@@ -266,6 +266,17 @@ class ConfigEditTests(unittest.TestCase):
         self.assertIn("[sensors]\nignore = %s\n" % OTHER, out)
 
 
+class LastSeenTests(unittest.TestCase):
+    def test_victron_age_is_fresher(self):
+        self.assertEqual(sensors.last_seen({"last_seen": 1000}, {"Age": 20}, 1300), 1280)
+
+    def test_file_is_fresher_or_no_device(self):
+        self.assertEqual(sensors.last_seen({"last_seen": 1290}, {"Age": 20}, 1300), 1290)
+        self.assertEqual(sensors.last_seen({"last_seen": 1000}, {}, 1300), 1000)
+        self.assertEqual(sensors.last_seen({}, {}, 1300), None)
+        self.assertEqual(sensors.last_seen({}, {"Age": 5}, 1300), 1295)
+
+
 class ViaTests(unittest.TestCase):
     def test_via(self):
         import time

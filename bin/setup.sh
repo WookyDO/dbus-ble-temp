@@ -31,6 +31,18 @@ if [ -z "$BIND" ]; then
 fi
 echo "dbus-ble-sensors UDP socket: ${BIND:-disabled}:$PORT"
 
+ENABLED=$(dbus -y com.victronenergy.settings /Settings/Services/BleSensors GetValue 2>/dev/null || true)
+if [ "$ENABLED" = "0" ]; then
+    echo "WARNING: Bluetooth sensors are disabled - nothing will be received."
+    echo "         Enable them in Settings > Integrations > Bluetooth sensors."
+fi
+CONT=$(dbus -y com.victronenergy.settings /Settings/BleSensors/ContinuousScan GetValue 2>/dev/null || true)
+if [ "$CONT" = "0" ]; then
+    echo "NOTE: continuous scanning is off, so only about 1 in 6 sensor broadcasts"
+    echo "      is received. Recommended: turn on 'Continuous scanning' in"
+    echo "      Settings > Integrations > Bluetooth sensors."
+fi
+
 # --- Config ----------------------------------------------------------------
 if [ ! -f "$BASE/config.ini" ]; then
     cp "$BASE/config.ini.example" "$BASE/config.ini"

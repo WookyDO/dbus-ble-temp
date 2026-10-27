@@ -70,7 +70,12 @@ copy the filter with `copy_safe_from_sockptr()` and require the full
 Both legacy (`0x02`) and extended (`0x0D`) LE advertising reports are parsed.
 
 Consequence: no data arrives when *Bluetooth sensors* is disabled in the GUI,
-because then nothing scans. The bridge logs a warning after `idle_warning`
+because then nothing scans. The scan's duty cycle is Victron's setting too:
+with *Continuous scanning* off, `dbus-ble-sensors` scans with a window of
+15 × 0.625 ms every 90 × 0.625 ms (about 17 % of the time), with it on the
+window covers the whole interval (100 %). ThermoBeacons broadcast every few
+seconds, so without continuous scanning only every sixth broadcast or so is
+received. The bridge logs a warning after `idle_warning`
 seconds without any Bluetooth traffic.
 
 ## Decoding ThermoBeacon

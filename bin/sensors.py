@@ -190,6 +190,22 @@ def ago(ts):
     return "%dd" % (d // 86400)
 
 
+def last_seen(entry, device, now):
+    """
+    Time of the last reading. The record file is only written every few
+    minutes, so for sensors dbus-ble-sensors currently lists, its 'Age'
+    (updated every 10 s) is more recent.
+    """
+    ts = entry.get("last_seen")
+    age = device.get("Age")
+    if age not in (None, ""):
+        try:
+            ts = max(ts or 0, now - int(age))
+        except (TypeError, ValueError):
+            pass
+    return ts
+
+
 def via(entry, recent=600):
     """Adapters that heard the sensor recently, strongest first: 'hci0 -52, hci1 -71'."""
     now = time.time()
@@ -226,8 +242,11 @@ def cmd_list(cfg, args):
         print("No ThermoBeacons seen yet.")
         return
 
+    now = time.time()
+    last = {m: last_seen(seen.get(m, {}), ble.get(ble_device_id(m), {}), now) for m in macs}
+
     rows = []
-    for mac in sorted(macs, key=lambda m: -(seen.get(m, {}).get("last_seen") or 0)):
+    for mac in sorted(macs, key=lambda m: -(last[m] or 0)):
         s = seen.get(mac, {})
         d = ble.get(ble_device_id(mac), {})
         if mac in cfg.ignore:
@@ -240,7 +259,7 @@ def cmd_list(cfg, args):
             status = "enabled" if int(d.get("Enabled") or 0) == 1 else "NEW (disabled)"
         name = str(d.get("CustomName") or d.get("Name") or "")
         temp = "%.1f°C %.0f%%" % (s["temperature"], s["humidity"]) if "temperature" in s else ""
-        rows.append((mac, status, name, ago(s.get("last_seen")),
+        rows.append((mac, status, name, ago(last[mac]),
                      str(s.get("rssi", "")), via(s), temp, ago(s.get("first_seen"))))
 
     hdr = ("MAC", "STATUS", "NAME", "SEEN", "RSSI", "VIA", "READING", "FIRST")
