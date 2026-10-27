@@ -1,19 +1,92 @@
-name: MasterDeployCI
+name: CI
+
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
-  build:
+  test:
+    name: Tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12"]   # 3.12 = Venus OS v3.85
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
-    - name: Zip Folder
-      run: zip -r ${{ github.event.repository.name }}.zip . -x ".git/*" ".github/*" ".gitignore"
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        files: ${{ github.event.repository.name }}.zip
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: pyflakes
+        run: |
+          pip install pyflakes
+          pyflakes dbus-ble-temp.py thermobeacon_bridge.py bin/*.py tests/*.py
+      - name: shellcheck
+        run: shellcheck bin/*.sh bin/service/log/run
+
+  package:
+    name: Build release zip
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          zip -r dbus-ble-temp.zip \
+            dbus-ble-temp.py thermobeacon_bridge.py config.ini.example \
+            bin README.md CHANGELOG.md LICENSE docs
+      - name: Check contents
+        run: |
+          unzip -l dbus-ble-temp.zip
+          for f in dbus-ble-temp.py thermobeacon_bridge.py config.ini.example \
+                   bin/setup.sh bin/uninstall.sh bin/sensors.py \
+                   bin/service/run.tmpl bin/service/log/run README.md LICENSE; do
+            unzip -l dbus-ble-temp.zip | grep -q " $f\$" || { echo "missing: $f"; exit 1; }
+          done
+          if unzip -l dbus-ble-temp.zip | grep -E " (config\.ini|sensors\.json|bin/service/run)$"; then
+            echo "local files must not be packaged"; exit 1
+          fi
+      - name: Check install from zip
+        run: |
+          mkdir /tmp/install && cd /tmp/install
+          unzip -q "$GITHUB_WORKSPACE/dbus-ble-temp.zip"
+          test -x dbus-ble-temp.py && test -x bin/setup.sh && test -x bin/sensors.py
+          python3 -c "import sys; sys.path.insert(0, '.'); import thermobeacon_bridge"
+          python3 bin/sensors.py --help >/dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dbus-ble-temp
+          path: dbus-ble-temp.zip
+
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dbus-ble-temp
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dbus-ble-temp.zip
+          generate_release_notes: true

@@ -1,5 +1,4 @@
 #!/bin/sh
 echo "*** starting dbus-ble-temp ***"
-BASE=${BASE}
 exec 2>&1
-HOME=$BASE exec $BASE/dbus-ble-temp.py
+exec python3 ${BASE}/dbus-ble-temp.py -c ${BASE}/config.ini
