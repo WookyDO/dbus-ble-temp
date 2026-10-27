@@ -38,6 +38,10 @@ broadcasts and hands the readings to Victron's own Bluetooth sensor service
   missing.
 - **Bluetooth sensors enabled**: Settings → Integrations → Bluetooth
   sensors. Without it nothing scans for Bluetooth devices.
+- **Continuous scanning** (same menu) - recommended, not required. Without it
+  Victron's service scans in short windows and only about one in six sensor
+  broadcasts is received: updates come less often and weak sensors may
+  briefly show as disconnected. `setup.sh` prints a note if it is off.
 - **Root access via SSH**, see Victron's
   [Root access](https://www.victronenergy.com/live/ccgx:root_access) guide
   (set a root password, enable SSH on LAN).
@@ -208,7 +212,7 @@ INFO     sensor bb:ab:00:00:05:9b named 'ThermoBeacon 059B'
 | Log: *cannot listen on hciN* | The adapter could not be opened; retried every minute. Check `hciconfig -a`. |
 | Log: *HCI ... Operation not permitted* | Not running as root. |
 | Sensor in the log, but not in the GUI list | Check the socket: `dbus -y com.victronenergy.settings /Settings/BleSensors/Socket/BindAddress GetValue` must be `127.0.0.1`. |
-| Sensor appears only now and then | Weak signal (see `RSSI` in `sensors.py list`); move the sensor or the GX device. ThermoBeacons broadcast only every few seconds. |
+| Sensor appears only now and then | Turn on *Continuous scanning* (see [Requirements](#requirements)). Otherwise weak signal (see `RSSI` in `sensors.py list`): move the sensor, the GX device or add a USB Bluetooth adapter. |
 | Values look wrong | Run in the foreground with debug output: `svc -d /service/dbus-ble-temp; python3 dbus-ble-temp.py -d`, stop with Ctrl-C, then `svc -u /service/dbus-ble-temp`. |
 
 Still stuck? Please open an [issue](https://github.com/WookyDO/dbus-ble-temp/issues)

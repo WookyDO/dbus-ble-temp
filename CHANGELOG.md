@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `setup.sh` warns when Bluetooth sensors are disabled and notes when
+  continuous scanning is off.
+- README: continuous scanning listed as recommended prerequisite.
+
+### Fixed
+- `sensors.py list`: `SEEN` lagged up to 5 minutes behind (record file is
+  written only every 5 minutes); it now uses the age reported by Victron's
+  service for sensors currently in range.
+
 ## 1.2.0
 
 ### Added
