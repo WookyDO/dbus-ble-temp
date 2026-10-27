@@ -6,8 +6,10 @@
 # DEBUG, INFO, WARNING, ERROR
 loglevel = INFO
 
-# Bluetooth adapter (0 = hci0, the built-in adapter on Cerbo GX)
-hci_device = 0
+# Bluetooth adapters to listen on: "all" (default) or a comma separated
+# list such as "0" or "0, 1" (= hci0, hci1). With "all", USB dongles plugged
+# in later are picked up within a minute.
+hci_device = all
 
 # UDP socket of dbus-ble-sensors (Settings/BleSensors/Socket/*)
 udp_host = 127.0.0.1

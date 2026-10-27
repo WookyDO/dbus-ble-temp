@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0
+
+### Added
+- Listens on **all Bluetooth adapters** (built-in and USB dongles), like
+  Victron's own service. Previously only `hci0` was used, so sensors that
+  only a second adapter could receive were missed.
+- Adapters plugged in later are picked up within a minute; adapters that
+  fail or are unplugged are dropped and reopened automatically.
+- `sensors.py list` shows which adapters receive a sensor (`VIA`, with RSSI).
+
+### Changed
+- `hci_device` defaults to `all`; a list such as `0, 1` is accepted.
+
 ## 1.1.0
 
 Complete rewrite. Not compatible with 0.x installations - install on a

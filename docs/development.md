@@ -4,7 +4,7 @@
 
 ```
 dbus-ble-temp.py          daemon entry point
-thermobeacon_bridge.py    all logic: HCI listener, decoder, Ruuvi encoder,
+thermobeacon_bridge.py    all logic: HCI listeners (one per adapter), decoder, Ruuvi encoder,
                           UDP sender, naming, seen-sensor record, cleanup
 bin/sensors.py            command line tool (list / ignore / unignore / forget)
 bin/setup.sh              install + pre-flight checks, idempotent
@@ -34,6 +34,7 @@ The tests run on any machine, no Bluetooth or D-Bus needed. They cover
 - the UDP packet layout, checked against `ble_socket_parse()` in
   `dbus-ble-sensors/src/ble-socket.c`,
 - HCI event parsing (legacy and extended reports, malformed input),
+- several adapters: discovery, hot-plug, removal, read errors, `VIA` record,
 - rate limiting, device and ignore lists, naming, seen-sensor record,
   cleanup decisions and scheduling,
 - `config.ini` editing (comments preserved) and MAC shortcuts of `sensors.py`.

@@ -3,7 +3,7 @@
 ## Overview
 
 ```
- ThermoBeacon ──BLE broadcast──▶ hci0 (Bluetooth adapter of the GX device)
+ ThermoBeacon ──BLE broadcast──▶ hci0, hci1, ... (Bluetooth adapters of the GX device)
                                    │
             ┌──────────────────────┴──────────────────────┐
             ▼                                             ▼
@@ -35,16 +35,32 @@ command line tool) without any third-party dependency.
 
 ## Receiving: passive raw HCI socket
 
-`dbus-ble-sensors` runs a continuous passive LE scan on `hci0` through a raw
-HCI socket. The Linux kernel delivers every HCI event to *all* raw HCI
-sockets bound to the adapter, so a second socket receives the same
-advertising reports without starting a scan of its own.
+`dbus-ble-sensors` runs a continuous passive LE scan on every Bluetooth
+adapter (built-in and USB dongles) through raw HCI sockets. The Linux kernel
+delivers every HCI event to *all* raw HCI sockets bound to that adapter, so
+a second socket receives the same advertising reports without starting a
+scan of its own.
 
-`HciListener` (in `thermobeacon_bridge.py`)
+`HciListener` (in `thermobeacon_bridge.py`) handles one adapter:
 
-- opens `AF_BLUETOOTH / SOCK_RAW / BTPROTO_HCI` and binds it to `hci0`,
+- opens `AF_BLUETOOTH / SOCK_RAW / BTPROTO_HCI` and binds it to `hciN`,
 - sets an HCI filter for *LE Meta events* only,
 - never sends a command to the adapter.
+
+A raw HCI socket only receives events of the one adapter it is bound to, so
+`HciHub` keeps one `HciListener` per adapter (`hci_device = all`, or a
+list):
+
+- adapters are found in `/sys/class/bluetooth` and rescanned every 60
+  seconds, so a USB dongle plugged in later is picked up,
+- an adapter whose socket fails (unplugged, reset) is dropped and reopened
+  on a later rescan,
+- an adapter that is present but down (no address) costs nothing; its
+  socket simply receives data once it comes up.
+
+A sensor heard by two adapters arrives twice; the per-sensor rate limit
+(`min_interval`) forwards only one of them. The seen-sensor record keeps the
+RSSI per adapter (`sensors.py list` → `VIA`).
 
 Venus OS' Python is built without Bluetooth support in the `socket` module,
 so the socket is created through `libc` via `ctypes`. Kernels from 6.10 on
@@ -194,6 +210,4 @@ adapter disturb each other. Listening on a second raw HCI socket is free.
 - Product name and default name come from the RuuviTag decoder of
   `dbus-ble-sensors` (*RuuviTag*, *Ruuvi XXXX* until enabled).
 - The low battery alarm uses RuuviTag thresholds (2.5 V, lower when cold).
-- Only the adapter given by `hci_device` is listened to; Victron's service
-  may use additional USB adapters.
 - No data while *Bluetooth sensors* is disabled in the GUI.
