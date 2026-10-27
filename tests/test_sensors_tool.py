@@ -30,7 +30,7 @@ class IgnoreTests(unittest.TestCase):
         recorded = []
 
         class Seen(object):
-            def update(self, r, rssi):
+            def update(self, r, rssi, adapter=None):
                 recorded.append(r.mac)
 
         b = tb.Bridge(cfg, sender=sent.append, clock=FakeClock(), seen=Seen())
@@ -171,7 +171,7 @@ class BridgeCleanupTests(unittest.TestCase):
             removed = []
             wallclock = staticmethod(lambda: NOW)
 
-            def update(self, r, rssi):
+            def update(self, r, rssi, adapter=None):
                 pass
 
             def remove(self, mac):
@@ -264,6 +264,16 @@ class ConfigEditTests(unittest.TestCase):
         out = self.edit("[general]\nignore = keep\n[sensors]\nignore = x\n", "ignore", {OTHER})
         self.assertIn("[general]\nignore = keep\n", out)
         self.assertIn("[sensors]\nignore = %s\n" % OTHER, out)
+
+
+class ViaTests(unittest.TestCase):
+    def test_via(self):
+        import time
+        now = time.time()
+        e = {"adapters": {"hci0": {"rssi": -71, "seen": now}, "hci1": {"rssi": -52, "seen": now},
+                          "hci2": {"rssi": -40, "seen": now - 3600}}}
+        self.assertEqual(sensors.via(e), "hci1 -52, hci0 -71")
+        self.assertEqual(sensors.via({}), "")
 
 
 class ResolveTests(unittest.TestCase):

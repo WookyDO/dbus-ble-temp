@@ -15,9 +15,9 @@ import sys
 AppDir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, AppDir)
 
-from thermobeacon_bridge import Bridge, Config, HciListener, log  # noqa: E402
+from thermobeacon_bridge import Bridge, Config, HciHub, describe_adapters, log  # noqa: E402
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 def main():
@@ -31,22 +31,22 @@ def main():
     cfg = Config(args.config)
     logging.getLogger().setLevel("DEBUG" if args.debug else cfg.loglevel)
 
-    log.info("dbus-ble-temp v%s starting: hci%d -> udp %s:%d, %s%s",
-             __version__, cfg.hci_device, cfg.udp_host, cfg.udp_port,
+    log.info("dbus-ble-temp v%s starting: %s -> udp %s:%d, %s%s",
+             __version__, describe_adapters(cfg.hci_devices), cfg.udp_host, cfg.udp_port,
              "sensors %s" % ", ".join(sorted(cfg.devices)) if cfg.devices
              else "auto-detecting all ThermoBeacons",
              ", ignoring %s" % ", ".join(sorted(cfg.ignore)) if cfg.ignore else "")
 
-    listener = HciListener(cfg.hci_device)
+    hub = HciHub(cfg.hci_devices)
     bridge = Bridge(cfg)
     signal.signal(signal.SIGTERM, lambda *a: sys.exit(0))  # svc -t / -d
     try:
-        bridge.run(listener)
+        bridge.run(hub)
     except KeyboardInterrupt:
         pass
     finally:
         bridge.close()
-        listener.close()
+        hub.close()
 
 
 if __name__ == "__main__":

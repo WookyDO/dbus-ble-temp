@@ -190,6 +190,14 @@ def ago(ts):
     return "%dd" % (d // 86400)
 
 
+def via(entry, recent=600):
+    """Adapters that heard the sensor recently, strongest first: 'hci0 -52, hci1 -71'."""
+    now = time.time()
+    ads = [(a.get("rssi", -999), name) for name, a in entry.get("adapters", {}).items()
+           if now - a.get("seen", 0) <= recent]
+    return ", ".join("%s %d" % (n, r) for r, n in sorted(ads, reverse=True))
+
+
 def resolve(macs, known):
     """Expand short forms ('059B') against the known sensors."""
     out = []
@@ -233,9 +241,9 @@ def cmd_list(cfg, args):
         name = str(d.get("CustomName") or d.get("Name") or "")
         temp = "%.1f°C %.0f%%" % (s["temperature"], s["humidity"]) if "temperature" in s else ""
         rows.append((mac, status, name, ago(s.get("last_seen")),
-                     str(s.get("rssi", "")), temp, ago(s.get("first_seen"))))
+                     str(s.get("rssi", "")), via(s), temp, ago(s.get("first_seen"))))
 
-    hdr = ("MAC", "STATUS", "NAME", "SEEN", "RSSI", "READING", "FIRST")
+    hdr = ("MAC", "STATUS", "NAME", "SEEN", "RSSI", "VIA", "READING", "FIRST")
     w = [max(len(r[i]) for r in rows + [hdr]) for i in range(len(hdr))]
     for r in [hdr] + rows:
         print("  ".join(c.ljust(w[i]) for i, c in enumerate(r)).rstrip())

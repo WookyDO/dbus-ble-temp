@@ -85,14 +85,23 @@ To see what is in range, with signal strength and last reading:
 
 ```console
 # /data/drivers/dbus-ble-temp/bin/sensors.py list
-MAC                STATUS          NAME               SEEN  RSSI  READING      FIRST
-bb:ab:00:00:05:9b  enabled         Fridge             12s   -52   4.3°C 58%    3d
-bc:13:00:00:0b:e1  enabled         ThermoBeacon 0BE1  15s   -58   19.5°C 58%   3d
-c0:ff:ee:00:00:01  NEW (disabled)  Ruuvi 0001         40s   -91   12.0°C 80%   2m
+MAC                STATUS          NAME               SEEN  RSSI  VIA                 READING     FIRST
+bb:ab:00:00:05:9b  enabled         Fridge             12s   -52   hci0 -52            4.3°C 58%   3d
+bc:13:00:00:0b:e1  enabled         ThermoBeacon 0BE1  15s   -58   hci1 -58, hci0 -71  19.5°C 58%  3d
+c0:ff:ee:00:00:01  NEW (disabled)  Ruuvi 0001         40s   -91   hci0 -91            12.0°C 80%  2m
 ```
 
 `STATUS` is one of `enabled`, `NEW (disabled)`, `ignored` (see below) or
-`gone` (not in range at the moment).
+`gone` (not in range at the moment). `VIA` lists the Bluetooth adapters that
+received the sensor in the last 10 minutes, strongest first.
+
+### More range with a second adapter
+
+dbus-ble-temp listens on **all** Bluetooth adapters of the GX device, like
+Victron's own service. If a sensor is too far away for the built-in adapter,
+a USB Bluetooth dongle placed closer to it (e.g. on a USB extension cable)
+extends the range; it is picked up automatically within a minute of being
+plugged in. `VIA` in `sensors.py list` shows which adapter receives what.
 
 ## Foreign and unwanted sensors
 
@@ -141,7 +150,7 @@ svc -t /service/dbus-ble-temp
 | Option | Default | Meaning |
 |---|---|---|
 | `[general] loglevel` | `INFO` | `DEBUG` logs every reading |
-| `[general] hci_device` | `0` | Bluetooth adapter (`hci0` = built-in) |
+| `[general] hci_device` | `all` | Bluetooth adapters: `all`, or e.g. `0` / `0, 1` |
 | `[general] udp_host`, `udp_port` | `127.0.0.1`, `18542` | Victron's Bluetooth sensor service |
 | `[general] min_interval` | `5` | at most one update per sensor every N seconds |
 | `[general] name_prefix` | `ThermoBeacon` | name for newly enabled sensors; empty = off |
@@ -185,7 +194,9 @@ bin/sensors.py list                                    # what is seen
 A healthy start looks like this:
 
 ```
-INFO     dbus-ble-temp v1.1.0 starting: hci0 -> udp 127.0.0.1:18542, auto-detecting all ThermoBeacons
+INFO     dbus-ble-temp v1.2.0 starting: all adapters -> udp 127.0.0.1:18542, auto-detecting all ThermoBeacons
+INFO     listening on Bluetooth adapter hci0
+INFO     listening on Bluetooth adapter hci1
 INFO     ThermoBeacon bb:ab:00:00:05:9b found: Reading(bb:ab:00:00:05:9b, 19.25 degC, 58.00 %, 2880 mV, uptime 2131727 s) (enable it once in Settings > Integrations > Bluetooth sensors)
 INFO     sensor bb:ab:00:00:05:9b named 'ThermoBeacon 059B'
 ```
@@ -194,6 +205,7 @@ INFO     sensor bb:ab:00:00:05:9b named 'ThermoBeacon 059B'
 |---|---|
 | `setup.sh`: *no UDP gateway socket* | Venus OS too old - update the firmware. |
 | Log: *no BLE advertisements received* | Bluetooth sensors are disabled in the GUI, or the adapter is down. |
+| Log: *cannot listen on hciN* | The adapter could not be opened; retried every minute. Check `hciconfig -a`. |
 | Log: *HCI ... Operation not permitted* | Not running as root. |
 | Sensor in the log, but not in the GUI list | Check the socket: `dbus -y com.victronenergy.settings /Settings/BleSensors/Socket/BindAddress GetValue` must be `127.0.0.1`. |
 | Sensor appears only now and then | Weak signal (see `RSSI` in `sensors.py list`); move the sensor or the GX device. ThermoBeacons broadcast only every few seconds. |

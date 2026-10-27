@@ -319,6 +319,103 @@ class HciListener(object):
         self._fd = None
 
 
+SYSFS_BLUETOOTH = "/sys/class/bluetooth"
+
+
+def available_adapters(sysfs=SYSFS_BLUETOOTH):
+    """Adapter numbers present in the system, e.g. [0, 1, 2] for hci0..hci2."""
+    try:
+        names = os.listdir(sysfs)
+    except OSError:
+        return []
+    out = []
+    for n in names:
+        if n.startswith("hci") and n[3:].isdigit():   # skips hci0:1 (connections)
+            out.append(int(n[3:]))
+    return sorted(out)
+
+
+class HciHub(object):
+    """
+    Listens on several Bluetooth adapters at once. Adapters that appear later
+    (USB dongle plugged in) are picked up on the next rescan, adapters that go
+    away are dropped and picked up again when they come back.
+
+    devices: None = all adapters, or a set of adapter numbers.
+    """
+    RESCAN = 60  # seconds
+
+    def __init__(self, devices=None, sysfs=SYSFS_BLUETOOTH, opener=HciListener,
+                 clock=time.monotonic):
+        self.devices = devices
+        self.sysfs = sysfs
+        self.opener = opener
+        self.clock = clock
+        self.listeners = {}
+        self._failed = set()
+        self._next_scan = 0.0
+        self.rescan()
+
+    def rescan(self):
+        self._next_scan = self.clock() + self.RESCAN
+        present = set(available_adapters(self.sysfs))
+        wanted = present if self.devices is None else present & self.devices
+        for dev in sorted(set(self.listeners) - present):
+            log.info("Bluetooth adapter hci%d removed", dev)
+            self._drop(dev)
+        for dev in sorted(wanted - set(self.listeners)):
+            try:
+                self.listeners[dev] = self.opener(dev)
+            except OSError as e:
+                if dev not in self._failed:
+                    log.warning("cannot listen on hci%d: %s", dev, e)
+                    self._failed.add(dev)
+                continue
+            self._failed.discard(dev)
+            log.info("listening on Bluetooth adapter hci%d", dev)
+        if self.devices is not None:
+            for dev in sorted(self.devices - present - self._failed):
+                log.warning("Bluetooth adapter hci%d (from config) not found", dev)
+                self._failed.add(dev)
+
+    def _drop(self, dev):
+        lst = self.listeners.pop(dev, None)
+        if lst is not None:
+            try:
+                lst.close()
+            except OSError:
+                pass
+
+    def wait(self, timeout):
+        """Wait up to timeout seconds; returns [(adapter number, packet), ...]."""
+        if self.clock() >= self._next_scan:
+            self.rescan()
+        by_fd = {lst.fileno(): dev for dev, lst in self.listeners.items()}
+        if not by_fd:
+            time.sleep(timeout)
+            return []
+        try:
+            ready, _, _ = select.select(list(by_fd), [], [], timeout)
+        except InterruptedError:
+            return []
+        out = []
+        for fd in ready:
+            dev = by_fd[fd]
+            try:
+                out.append((dev, self.listeners[dev].read()))
+            except OSError as e:
+                if e.errno in (errno.EAGAIN, errno.EINTR):
+                    continue
+                # adapter unplugged / reset (ENODEV, ENETDOWN, EBADFD, ...)
+                log.warning("Bluetooth adapter hci%d: %s - will retry", dev, e)
+                self._drop(dev)
+        return out
+
+    def close(self):
+        for dev in list(self.listeners):
+            self._drop(dev)
+
+
 # --------------------------------------------------------------------------
 # Configuration
 # --------------------------------------------------------------------------
@@ -334,7 +431,8 @@ class Config(object):
 
         g = cp["general"] if cp.has_section("general") else {}
         self.loglevel = g.get("loglevel", "INFO").upper()
-        self.hci_device = int(g.get("hci_device", 0))
+        # "all" (default) or a comma separated list of adapter numbers
+        self.hci_devices = parse_adapters(g.get("hci_device", "all"))
         self.udp_host = g.get("udp_host", DEFAULT_UDP_HOST)
         self.udp_port = int(g.get("udp_port", DEFAULT_UDP_PORT))
         self.min_interval = float(g.get("min_interval", 5))
@@ -354,6 +452,26 @@ class Config(object):
         s = cp["sensors"] if cp.has_section("sensors") else {}
         self.devices = parse_mac_list(s.get("devices", ""))
         self.ignore = parse_mac_list(s.get("ignore", ""))
+
+
+def parse_adapters(raw):
+    """'all' -> None, '0, hci1' -> {0, 1}"""
+    raw = raw.strip().lower()
+    if raw in ("", "all", "*"):
+        return None
+    out = set()
+    for part in raw.replace(";", ",").split(","):
+        part = part.strip()
+        if part.startswith("hci"):
+            part = part[3:]
+        if not part.isdigit():
+            raise ValueError("invalid hci_device: %r" % raw)
+        out.add(int(part))
+    return out
+
+
+def describe_adapters(devices):
+    return "all adapters" if devices is None else ", ".join("hci%d" % d for d in sorted(devices))
 
 
 def parse_mac_list(raw):
@@ -444,13 +562,20 @@ class SeenStore(object):
             self._dirty = True
             self.flush()
 
-    def update(self, reading, rssi):
+    ADAPTER_RECENT = 600  # seconds an adapter counts as hearing a sensor
+
+    def update(self, reading, rssi, adapter=None):
         now = self.wallclock()
         entry = self.data.get(reading.mac)
         new = entry is None
         if new:
             entry = self.data[reading.mac] = {"first_seen": int(now)}
-        entry.update(last_seen=int(now), rssi=rssi,
+        adapters = entry.setdefault("adapters", {})
+        if adapter is not None:
+            adapters[adapter] = {"rssi": rssi, "seen": int(now)}
+        recent = [a["rssi"] for a in adapters.values()
+                  if now - a.get("seen", 0) <= self.ADAPTER_RECENT]
+        entry.update(last_seen=int(now), rssi=max(recent) if recent else rssi,
                      temperature=round(reading.temperature, 2),
                      humidity=round(reading.humidity, 2),
                      voltage=round(reading.voltage_mv / 1000.0, 3))
@@ -559,6 +684,8 @@ class Bridge(object):
         self._last_sent = {}
         self._known = set()
         self._ignored_logged = set()
+        self._last_adv = clock()
+        self._warned = False
         if seen is None and getattr(config, "state_file", ""):
             seen = SeenStore(config.state_file)
         self._seen = seen
@@ -582,7 +709,7 @@ class Bridge(object):
             return False
         return not self.cfg.devices or mac in self.cfg.devices
 
-    def handle_adv(self, addr, adv_data, rssi):
+    def handle_adv(self, addr, adv_data, rssi, adapter=None):
         """Process one advertisement. Returns True if a packet was forwarded."""
         for ad_type, ad in iter_ad_structures(adv_data):
             if ad_type != AD_TYPE_MANUFACTURER:
@@ -591,7 +718,7 @@ class Bridge(object):
             if reading is None:
                 continue
             if self._seen is not None:
-                self._seen.update(reading, rssi)
+                self._seen.update(reading, rssi, adapter)
             if not self.accepts(addr):
                 if addr not in self._ignored_logged:
                     self._ignored_logged.add(addr)
@@ -660,32 +787,29 @@ class Bridge(object):
         if done:
             self._named.add(mac)
 
-    def run(self, listener):
-        last_adv = self.clock()
-        warned = False
+    def run(self, hub):
+        """Main loop. hub: HciHub (or anything with wait(timeout))."""
+        self._last_adv = self.clock()
+        self._warned = False
         while True:
-            try:
-                r, _, _ = select.select([listener], [], [], 10)
-            except InterruptedError:
-                continue
-            now = self.clock()
-            self.maybe_cleanup(now)
-            if not r:
-                if not warned and now - last_adv > self.cfg.idle_warning:
-                    log.warning("no BLE advertisements received for %d s - is "
-                                "'Bluetooth sensors' enabled on this GX device?",
-                                now - last_adv)
-                    warned = True
-                continue
-            try:
-                pkt = listener.read()
-            except OSError as e:
-                if e.errno in (errno.EAGAIN, errno.EINTR):
-                    continue
-                raise
+            self.step(hub)
+
+    def step(self, hub, timeout=10):
+        packets = hub.wait(timeout)
+        now = self.clock()
+        self.maybe_cleanup(now)
+        got_adv = False
+        for dev, pkt in packets:
             for addr, data, rssi in parse_hci_event(pkt):
-                last_adv = now
-                if warned:
-                    log.info("BLE advertisements received again")
-                    warned = False
-                self.handle_adv(addr, data, rssi)
+                got_adv = True
+                self.handle_adv(addr, data, rssi, "hci%d" % dev)
+        if got_adv:
+            self._last_adv = now
+            if self._warned:
+                log.info("BLE advertisements received again")
+                self._warned = False
+        elif not self._warned and now - self._last_adv > self.cfg.idle_warning:
+            log.warning("no BLE advertisements received for %d s - is "
+                        "'Bluetooth sensors' enabled on this GX device?",
+                        now - self._last_adv)
+            self._warned = True
