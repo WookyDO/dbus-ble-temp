@@ -17,7 +17,7 @@ sys.path.insert(0, AppDir)
 
 from thermobeacon_bridge import Bridge, Config, HciHub, describe_adapters, log  # noqa: E402
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 
 def main():

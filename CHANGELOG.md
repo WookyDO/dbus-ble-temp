@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.1
 
 ### Added
 - `setup.sh` warns when Bluetooth sensors are disabled and notes when

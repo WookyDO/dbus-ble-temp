@@ -198,7 +198,7 @@ bin/sensors.py list                                    # what is seen
 A healthy start looks like this:
 
 ```
-INFO     dbus-ble-temp v1.2.0 starting: all adapters -> udp 127.0.0.1:18542, auto-detecting all ThermoBeacons
+INFO     dbus-ble-temp v1.2.1 starting: all adapters -> udp 127.0.0.1:18542, auto-detecting all ThermoBeacons
 INFO     listening on Bluetooth adapter hci0
 INFO     listening on Bluetooth adapter hci1
 INFO     ThermoBeacon bb:ab:00:00:05:9b found: Reading(bb:ab:00:00:05:9b, 19.25 degC, 58.00 %, 2880 mV, uptime 2131727 s) (enable it once in Settings > Integrations > Bluetooth sensors)
