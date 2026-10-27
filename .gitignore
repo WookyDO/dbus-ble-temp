@@ -1,0 +1,7 @@
+bin/service/run
+bin/service/supervise
+bin/service/log/supervise
+config.ini
+sensors.json
+sensors.json.tmp
+__pycache__/

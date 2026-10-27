@@ -1,0 +1,44 @@
+# dbus-ble-temp configuration
+# setup.sh copies this file to config.ini if that does not exist yet.
+# Restart the service after changes:  svc -t /service/dbus-ble-temp
+
+[general]
+# DEBUG, INFO, WARNING, ERROR
+loglevel = INFO
+
+# Bluetooth adapter (0 = hci0, the built-in adapter on Cerbo GX)
+hci_device = 0
+
+# UDP socket of dbus-ble-sensors (Settings/BleSensors/Socket/*)
+udp_host = 127.0.0.1
+udp_port = 18542
+
+# Forward at most one reading per sensor every N seconds
+min_interval = 5
+
+# New sensors get the name "<name_prefix> <last 4 MAC digits>", e.g.
+# "ThermoBeacon 059B" - only while their name is empty, so a name set in
+# the GUI is never overwritten. Leave empty to disable.
+name_prefix = ThermoBeacon
+
+# Sensors that were never enabled in the GUI and have not been seen for N
+# days are removed from Victron's settings completely (max 29, 0 = off).
+cleanup_days = 7
+
+# Warn in the log if no BLE advertisements at all are seen for N seconds
+idle_warning = 120
+
+# File in which seen sensors are recorded (for bin/sensors.py list).
+# Default: sensors.json next to this file. Empty = off.
+#state_file =
+
+[sensors]
+# Comma separated list of ThermoBeacon MAC addresses to forward.
+# Leave empty to auto-detect every ThermoBeacon in range. New sensors appear
+# disabled in the GUI (Settings > Integrations > Bluetooth sensors) and have
+# to be enabled there once, so a neighbour's sensor never shows up on its own.
+devices =
+
+# Sensors that are never forwarded (foreign / unwanted ones).
+# Easiest managed with:  bin/sensors.py ignore <MAC>  /  unignore <MAC>
+ignore =
